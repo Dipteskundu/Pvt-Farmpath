@@ -1,0 +1,414 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Icon, type IconName, ShoppingCart, ArrowRight } from "@/components/icons";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useToast } from "@/components/ui/Toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { tr } from "@/lib/localize";
+import { SaveToggle } from "./SaveToggle";
+import { StarRating } from "../ratings/StarRating";
+import { RatingForm } from "../ratings/RatingForm";
+import { ReviewList } from "../ratings/ReviewList";
+import {
+  getProduceById,
+  addToCart,
+  submitProduceRating,
+  getProduceRatings,
+  type ProduceListing,
+  type QualityGrade,
+} from "@/lib/marketplaceApi";
+import { type RatingItem } from "@/types";
+
+const GRADE_TEXT: Record<string, [string, string]> = {
+  "Grade A": ["গ্রেড এ", "Grade A"],
+  "Grade B": ["গ্রেড বি", "Grade B"],
+  "Grade C": ["গ্রেড সি", "Grade C"],
+  "Pending Inspection": ["পরিদর্শন বাকি", "Pending Inspection"],
+  Rejected: ["প্রত্যাখ্যাত", "Rejected"],
+};
+const CATEGORY_TEXT: Record<string, [string, string]> = {
+  Cereal: ["শস্য", "Cereal"],
+  Vegetable: ["সবজি", "Vegetable"],
+  Pulse: ["ডাল", "Pulse"],
+  Oilseed: ["তেলবীজ", "Oilseed"],
+  Fruit: ["ফল", "Fruit"],
+  "Cash Crop": ["অর্থকরী ফসল", "Cash Crop"],
+};
+
+interface Props {
+  id: string;
+  /**
+   * Breadcrumb/root path. Matches wherever the detail page was mounted —
+   * `/products` for the public route. Detail is session-gated by the route
+   * itself, so this component only ever runs for a signed-in visitor.
+   */
+  basePath?: string;
+}
+
+export function ProduceDetail({ id, basePath = "/products" }: Props) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const { language } = useLanguage();
+  const { user } = useAuth();
+
+  const [listing, setListing] = useState<ProduceListing | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(0);
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  // Ratings & feedback — loaded separately from the listing so the detail
+  // fetch stays untouched and a failed review load never blanks the page.
+  const [ratings, setRatings] = useState<RatingItem[]>([]);
+  const [ratingsLoading, setRatingsLoading] = useState(true);
+
+  const t = (bn: string, en: string) => language === "bn" ? bn : en;
+
+  const gradeText = (g: QualityGrade) => {
+    const p = GRADE_TEXT[g];
+    return p ? (language === "bn" ? p[0] : p[1]) : g;
+  };
+
+  const categoryText = (c: string) => {
+    const p = CATEGORY_TEXT[c];
+    return p ? (language === "bn" ? p[0] : p[1]) : c;
+  };
+
+  useEffect(() => {
+    getProduceById(id).then((res) => {
+      if (res.success && res.data) {
+        setListing(res.data);
+        setQuantity(res.data.minimumOrderKg);
+      }
+      setLoading(false);
+    });
+  }, [id]);
+
+  useEffect(() => {
+    getProduceRatings(id).then((res) => {
+      setRatings(res.success && Array.isArray(res.data) ? res.data : []);
+      setRatingsLoading(false);
+    });
+  }, [id]);
+
+  /** Send them through login and bring them back here afterwards. */
+  const requireLogin = () => {
+    router.push(`/login?next=${encodeURIComponent(`${basePath}/${id}`)}`);
+  };
+
+  const handleAddToCart = () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
+    if (!listing) return;
+    if (quantity < listing.minimumOrderKg) {
+      showToast("error", t(`নূন্যতম অর্ডার ${listing.minimumOrderKg} কেজি`, `Minimum order is ${listing.minimumOrderKg} kg`));
+      return;
+    }
+    setAddingToCart(true);
+    addToCart(listing, quantity);
+    showToast("success", t(`${listing.cropName} কার্টে যোগ হয়েছে (${quantity} কেজি)`, `${listing.cropName} added to cart (${quantity} kg)`));
+    setAddingToCart(false);
+  };
+
+  /**
+   * Submit a rating. The server recomputes the summary, so a successful write
+   * updates both the header stats and the list locally instead of refetching —
+   * the reviewer sees their own comment appear immediately.
+   */
+  const handleRate = async (rating: number, comment: string): Promise<boolean> => {
+    if (!user) {
+      requireLogin();
+      return false;
+    }
+    const res = await submitProduceRating(id, rating, comment);
+    if (!res.success || !res.data) {
+      showToast("error", res.message || t("রেটিং জমা দিতে ব্যর্থ", "Could not submit your rating"));
+      return false;
+    }
+
+    setListing((prev) =>
+      prev
+        ? {
+            ...prev,
+            averageRating: res.data!.averageRating,
+            totalRatings: res.data!.totalRatings,
+          }
+        : prev
+    );
+    setRatings((prev) => [
+      {
+        rating,
+        comment,
+        userName: user.name || user.email || t("ব্যবহারকারী", "User"),
+        userId: user.id,
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+    return true;
+  };
+
+  const gradeColor: Record<
+    QualityGrade,
+    "success" | "warning" | "neutral" | "info" | "danger"
+  > = {
+    "Grade A": "success",
+    "Grade B": "warning",
+    "Grade C": "neutral",
+    // Not yet inspected — neutral-blue rather than green, so an ungraded lot
+    // never reads as premium.
+    "Pending Inspection": "info",
+    Rejected: "danger",
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 animate-pulse">
+        <div className="h-6 bg-slate-200 dark:bg-[#1a1a1a] rounded w-1/3 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="h-80 bg-slate-200 dark:bg-[#1a1a1a] rounded-2xl" />
+          <div className="space-y-4">
+            {[1,2,3,4].map(i => <div key={i} className="h-5 bg-slate-200 dark:bg-[#1a1a1a] rounded" />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
+        <p className="text-slate-500">{language === "bn" ? "লিস্টিং পাওয়া যায়নি।" : "Listing not found."}</p>
+        <Link href={basePath} className="mt-4 inline-flex items-center gap-2 text-blue-600 text-sm font-medium hover:underline">
+          <Icon name="ArrowLeft" size={14} /> {t("পণ্যে ফিরে যান", "Back to Products")}
+        </Link>
+      </div>
+    );
+  }
+
+  const totalCost = quantity * listing.pricePerKgBdt;
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-xs text-slate-400 mb-6">
+        <Link href={basePath} className="hover:text-blue-600">
+          {t("পণ্য", "Products")}
+        </Link>
+        <Icon name="ChevronRight" size={12} />
+        <span className="text-slate-700 dark:text-[#e0e0e0] font-medium">{tr(listing.cropName)}</span>
+      </nav>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Image */}
+        <div>
+          <div className="relative rounded-2xl overflow-hidden h-72 sm:h-80">
+            <img src={listing.imageUrl} alt={tr(listing.cropName)} className="w-full h-full object-cover" />
+            <div className="absolute top-3 left-3 flex gap-2">
+              <Badge variant={gradeColor[listing.qualityGrade]}>{gradeText(listing.qualityGrade)}</Badge>
+              {listing.isVerified && (
+                <span className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  <Icon name="ShieldCheck" size={11} /> {t("ভেরিফাইড", "Verified")}
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {listing.tags.map(tag => (
+              <span key={tag} className="text-[11px] px-2 py-0.5 bg-slate-100 dark:bg-[#1a1a1a] text-slate-600 dark:text-[#a0a0a0] rounded-full">
+                #{tr(tag)}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Info + Order */}
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-[#f0f0f0]">{tr(listing.cropName)}</h1>
+            <p className="text-slate-500 dark:text-[#a0a0a0] text-sm mt-1">{tr(listing.variety)} · {categoryText(listing.category)}</p>
+            <div className="flex items-baseline gap-2 mt-3">
+              <span className="text-3xl font-black text-blue-600 dark:text-blue-400">৳{listing.pricePerKgBdt}</span>
+              <span className="text-sm text-slate-400">{t("/কেজি", "/kg")}</span>
+            </div>
+            {/* Rating summary — always rendered; "no ratings yet" rather than
+                a hidden row, so buyers see the feature exists. */}
+            <div className="flex items-center gap-2 mt-2">
+              <StarRating rating={listing.averageRating ?? 0} size={14} />
+              <span className="text-xs font-semibold text-slate-700 dark:text-[#e0e0e0]">
+                {(listing.averageRating ?? 0).toFixed(1)}
+              </span>
+              <span className="text-xs text-slate-400">
+                ({listing.totalRatings ?? 0} {t("রেটিং", "rating(s)")})
+              </span>
+            </div>
+          </div>
+
+          {/* Farmer info */}
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold">
+                {listing.farmerAvatar}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-[#f0f0f0]">{listing.farmerName}</p>
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  <Icon name="MapPin" size={11} /> {tr(listing.farmerLocation)}
+                </p>
+              </div>
+              <a href={`tel:${listing.farmerPhone}`} className="ml-auto flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
+                <Icon name="Phone" size={13} /> {t("যোগাযোগ", "Contact")}
+              </a>
+            </div>
+          </Card>
+
+          {/* Details grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { icon: "PackageCheck", label: t("পাওয়া যায়", "Available"), value: `${listing.quantityKg.toLocaleString()} ${t("কেজি", "kg")}` },
+              { icon: "ShoppingCart", label: t("নূন্যতম অর্ডার", "Min. Order"), value: `${listing.minimumOrderKg} ${t("কেজি", "kg")}` },
+              { icon: "Calendar", label: t("ফসল তোলা হয়েছে", "Harvested"), value: listing.harvestDate },
+              { icon: "Clock", label: t("পাওয়া যাবে পর্যন্ত", "Available Until"), value: listing.availableUntil },
+            ].map(item => (
+              <div key={item.label} className="flex items-start gap-2 bg-slate-50 dark:bg-[#0f0f0f] rounded-xl p-3">
+                <Icon name={item.icon as IconName} size={15} className="text-slate-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{item.label}</p>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-[#e0e0e0] mt-0.5">{item.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Description */}
+          <p className="text-sm text-slate-600 dark:text-[#a0a0a0] leading-relaxed">{tr(listing.description)}</p>
+
+          {/* Order widget */}
+          <div className="bg-blue-50 dark:bg-blue-500/10 rounded-2xl p-4 border border-blue-100 dark:border-blue-500/20">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-[#e0e0e0] mb-2">
+              {t(`পরিমাণ (কেজি) — নূন্যতম: ${listing.minimumOrderKg} কেজি`, `Quantity (kg) — Min: ${listing.minimumOrderKg} kg`)}
+            </label>
+            <div className="flex items-center gap-3 mb-3">
+              <button
+                onClick={() => setQuantity(q => Math.max(listing.minimumOrderKg, q - listing.minimumOrderKg))}
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-[#333] bg-white dark:bg-[#111] flex items-center justify-center text-slate-700 dark:text-[#e0e0e0] hover:bg-slate-50 transition-colors"
+              >
+                <Icon name="Minus" size={14} />
+              </button>
+              <input
+                type="number"
+                min={listing.minimumOrderKg}
+                max={listing.quantityKg}
+                step={listing.minimumOrderKg}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(listing.minimumOrderKg, Number(e.target.value)))}
+                className="flex-1 text-center text-sm font-bold py-2 border border-slate-200 dark:border-[#333] rounded-xl bg-white dark:bg-[#111] text-slate-900 dark:text-[#f0f0f0] focus:outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={() => setQuantity(q => Math.min(listing.quantityKg, q + listing.minimumOrderKg))}
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-[#333] bg-white dark:bg-[#111] flex items-center justify-center text-slate-700 dark:text-[#e0e0e0] hover:bg-slate-50 transition-colors"
+              >
+                <Icon name="Plus" size={14} />
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-sm mb-3">
+              <span className="text-slate-500">{t("মোট খরচ", "Total Cost")}</span>
+              <span className="font-black text-blue-700 dark:text-blue-400 text-lg">৳{totalCost.toLocaleString()}</span>
+            </div>
+            {/* Saved straight from the detail page too — otherwise the heart
+                only exists on the grid and a buyer who opens a lot has to
+                back out to keep it. */}
+            {user && (
+              <div className="mb-3">
+                <SaveToggle
+                  listingId={listing.id}
+                  saved={!!listing.saved}
+                  variant="inline"
+                  onChange={(_id, saved) =>
+                    setListing((prev) => (prev ? { ...prev, saved } : prev))
+                  }
+                  className="w-full"
+                />
+              </div>
+            )}
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleAddToCart}
+              loading={addingToCart}
+              icon={ShoppingCart}
+            >
+              {user ? t("কার্টে যোগ করুন", "Add to Cart") : t("অর্ডার করতে লগইন করুন", "Login to Order")}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Ratings & feedback */}
+      <section className="mt-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-black text-slate-900 dark:text-[#f0f0f0] flex items-center gap-2">
+            <Icon name="Star" size={17} className="text-yellow-400" fill="currentColor" />
+            {t("রেটিং ও মতামত", "Ratings & Reviews")}
+          </h2>
+          <div className="flex items-center gap-2">
+            <StarRating rating={listing.averageRating ?? 0} size={14} />
+            <span className="text-xs text-slate-400">
+              {listing.totalRatings ?? 0} {t("টি রেটিং", "rating(s)")}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* One rating per user — the form disappears once theirs is in. */}
+          <div>
+            {!user ? (
+              <div className="rounded-2xl border border-slate-200 dark:border-[#222] bg-white dark:bg-[#0a0a0a] p-5 text-center">
+                <p className="text-sm text-slate-600 dark:text-[#a0a0a0]">
+                  {t("রেটিং দিতে সাইন ইন করুন", "Sign in to rate this product")}
+                </p>
+                <Button
+                  className="mt-3"
+                  onClick={requireLogin}
+                  icon={ArrowRight}
+                >
+                  {t("সাইন ইন", "Sign in")}
+                </Button>
+              </div>
+            ) : ratings.some((r) => r.userId === user.id) ? (
+              <div className="rounded-2xl border border-slate-200 dark:border-[#222] bg-slate-50 dark:bg-[#0f0f0f] p-5 text-center">
+                <Icon
+                  name="Star"
+                  size={20}
+                  className="text-yellow-400 mx-auto"
+                  fill="currentColor"
+                />
+                <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-[#e0e0e0]">
+                  {t("আপনি ইতিমধ্যে রেটিং দিয়েছেন", "You have already rated this product")}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {t(
+                    "একজন ব্যবহারকারী একটি পণ্যে একবার রেটিং দিতে পারেন",
+                    "Each user can rate a product once"
+                  )}
+                </p>
+              </div>
+            ) : (
+              <RatingForm onSubmit={handleRate} />
+            )}
+          </div>
+
+          <ReviewList ratings={ratings} loading={ratingsLoading} />
+        </div>
+      </section>
+    </div>
+  );
+}

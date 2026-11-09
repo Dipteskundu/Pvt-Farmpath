@@ -1,0 +1,58 @@
+"use client";
+
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { isRouteAllowed } from '@/features/layout/navConfig';
+import { PortalType } from '@/types';
+import { getLoginUrl } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+export function RouteGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, selectedPortal } = useAuth();
+  const { language } = useLanguage();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (!user) {
+      router.push(getLoginUrl(pathname));
+      return;
+    }
+
+    if (!selectedPortal) {
+      if (pathname !== '/select-portal') {
+        router.push('/select-portal');
+      }
+      return;
+    }
+
+    // The allowed set moves with the user's roles: the sidebar is composed
+    // per role, so validation has to be too — a buyer's `/dashboard/demands`
+    // is legitimate, while the same URL for someone with no marketplace
+    // access would be a dead end the API would 403 anyway.
+    if (!isRouteAllowed(selectedPortal as PortalType, pathname, user.roles)) {
+      router.push('/dashboard');
+    }
+  }, [user, isLoading, selectedPortal, pathname, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#000000] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500 dark:text-[#a0a0a0]">{language === "bn" ? "লোড হচ্ছে..." : "Loading..."}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  if (!selectedPortal) return null;
+
+  return <>{children}</>;
+}
