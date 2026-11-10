@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/Toast";
+import { WarmupPing } from "@/components/WarmupPing";
 import { MotionConfig } from "framer-motion";
 
 export const metadata: Metadata = {
@@ -23,7 +24,12 @@ export default function RootLayout({
           <LanguageProvider>
             <AuthProvider>
               <MotionConfig reducedMotion="user">
-                <ToastProvider>{children}</ToastProvider>
+                <ToastProvider>
+                  {/* Wake the free-tier server + AI instances the instant the
+                      app opens, so real requests find warm services. */}
+                  <WarmupPing />
+                  {children}
+                </ToastProvider>
               </MotionConfig>
             </AuthProvider>
           </LanguageProvider>
