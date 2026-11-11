@@ -25,8 +25,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AuthShell, authContainer, authItem } from "./AuthShell";
 import { AuthField } from "./AuthField";
 import { SocialButtons } from "./SocialButtons";
-import { withWarmupRetry, isStillDown } from "@/lib/warmup";
-import { WakingUpModal } from "@/components/ui/WakingUpModal";
 
 /** One-click demo logins, revealed by the collapsible "demo access" strip. */
 const DEMOS = [
@@ -65,13 +63,10 @@ export const AuthScreen: React.FC = () => {
     setLoading(true);
 
     try {
-      // Cold-start aware: if the server is asleep, the sprout modal shows and
-      // the same login retries once the service is warm.
-      await withWarmupRetry(() => login(email, password), "server");
+      await login(email, password);
       setSuccess(true);
       showToast("success", t("সফলভাবে লগিন হয়েছে।", "Signed in successfully."));
     } catch (err) {
-      if (isStillDown(err)) return; // the modal owns this state ("Try again")
       const { message } = (err ?? {}) as { message?: string };
       showToast(
         "error",
@@ -88,10 +83,9 @@ export const AuthScreen: React.FC = () => {
     setLoading(true);
 
     try {
-      await withWarmupRetry(() => login(demoEmail, demoPassword), "server");
+      await login(demoEmail, demoPassword);
       showToast("success", t("সফলভাবে লগিন হয়েছে।", "Signed in successfully."));
     } catch (err) {
-      if (isStillDown(err)) return; // the modal owns this state
       const { message } = (err ?? {}) as { message?: string };
       showToast("error", message || t("ডেমো লগইন ব্যর্থ হয়েছে।", "Demo login failed."));
     } finally {
@@ -281,10 +275,6 @@ export const AuthScreen: React.FC = () => {
           />
         </motion.div>
       </motion.div>
-
-      {/* Free-tier cold start: friendly "waking up" screen instead of an error
-          toast; "Try again" reruns the pending login. */}
-      <WakingUpModal onRetry={() => void (email && password ? handleSubmit() : undefined)} />
     </AuthShell>
   );
 };

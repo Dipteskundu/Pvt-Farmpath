@@ -10,8 +10,6 @@ import { NumberedPagination } from "@/components/ui/NumberedPagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Reveal, staggerContainer, staggerItem, EASE } from "@/components/motion";
-import { withWarmupRetry, isStillDown } from "@/lib/warmup";
-import { WakingUpModal } from "@/components/ui/WakingUpModal";
 import { ProduceCard } from "./ProduceCard";
 import {
   getProduceListings,
@@ -52,7 +50,6 @@ export function BrowseProduce({ basePath = "/products" }: Props) {
 
   const [listings, setListings] = useState<ProduceListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
   const [grade, setGrade] = useState<QualityGrade | "">("");
@@ -103,25 +100,7 @@ export function BrowseProduce({ basePath = "/products" }: Props) {
         grade: grade || undefined,
         verifiedOnly: verifiedOnly || undefined,
       };
-      let res;
-      try {
-        // Cold-start aware: the sprout modal covers a waking instance and the
-        // same request retries once it answers healthy.
-        res = await withWarmupRetry(
-          () => getProduceListings(filters),
-          "server",
-          (r) => (r.success ? undefined : r.message)
-        );
-      } catch (err) {
-        // Still cold after the wait → the modal shows its "Try again" state;
-        // other (genuine) errors keep the current silent-skip behaviour.
-        if (isStillDown(err)) return;
-        res = {
-          success: false,
-          data: [],
-          timestamp: new Date().toISOString(),
-        } as Awaited<ReturnType<typeof getProduceListings>>;
-      }
+      const res = await getProduceListings(filters);
       if (cancelled) return;
       if (res.success) {
         const sorted = [...res.data];
@@ -137,14 +116,10 @@ export function BrowseProduce({ basePath = "/products" }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [search, category, grade, verifiedOnly, sortBy, reloadKey]);
+  }, [search, category, grade, verifiedOnly, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Free-tier cold start: friendly overlay while the server wakes; the
-          retry button re-runs this load. */}
-      <WakingUpModal onRetry={() => setReloadKey((k) => k + 1)} />
-
       {/* Header */}
       <Reveal y={14}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">

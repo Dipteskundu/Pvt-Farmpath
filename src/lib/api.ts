@@ -82,21 +82,30 @@ function withTimeout(timeoutMs?: number): { controller?: AbortController; clear:
 
 /**
  * Runs when fetch() itself failed (server unreachable, CORS, blocked request).
- * Probes the backend with a no-cors request so we can tell the difference
- * between "server is down" and "server is up but the browser blocked us".
+ * Probes the backend with a *cors-mode* request so the status code is actually
+ * readable — critical for free-tier cold starts, where Render answers an
+ * asleep instance with an instant 502 (and no CORS headers, which is what made
+ * the old no-cors probe mislabel cold starts as CORS problems).
  */
 async function describeNetworkError(): Promise<string> {
   const port = portFromApiBase();
 
   const { controller, clear } = withTimeout(4000);
   try {
-    await fetch(`${API_BASE}/health`, {
-      mode: "no-cors",
+    const res = await fetch(`${API_BASE}/health`, {
       cache: "no-store",
       signal: controller?.signal,
     });
-    // The request resolved => something is listening on that port, but the
-    // response was blocked (CORS / mixed content / wrong origin).
+    if (!res.ok) {
+      // Something answered, but not with a healthy status — on Render's free
+      // plan this is the signature of an instance that is asleep and waking.
+      return (
+        `The backend answered with HTTP ${res.status} — it is most likely ` +
+        `asleep (free plan) and waking up. Please try again in 10–20 seconds.`
+      );
+    }
+    // Reachable AND readable-health => the request itself is fine, so the
+    // original failure really was a browser-side block.
     return (
       `The backend is running on port ${port}, but the browser blocked the request ` +
       `(CORS or mixed content). Check NEXT_PUBLIC_API_URL in FarmPath/.env.local ` +

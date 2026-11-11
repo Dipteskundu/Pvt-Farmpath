@@ -17,8 +17,6 @@ import { FormInput, FormSelect } from '@/components/ui/FormInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { getCropRecommendations, getFarms } from '@/lib/farmerApi';
-import { withWarmupRetry, isStillDown } from '@/lib/warmup';
-import { WakingUpModal } from '@/components/ui/WakingUpModal';
 import { CropRecommendationItem, CropRecommendationInput, Farm } from '@/types';
 import { FarmerModuleKey } from '@/features/layout';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -80,21 +78,12 @@ export const CropRecommendation: React.FC<CropRecommendationProps> = ({ onNaviga
   const loadRecommendations = useCallback(async () => {
     try {
       setLoading(true);
-      // Cold-start aware ("auto" → picks server vs AI from the failure) — the
-      // sprout modal shows the right copy and retries the same request.
-      const res = await withWarmupRetry(
-        () => getCropRecommendations(inputForm),
-        'auto'
-      );
+      const res = await getCropRecommendations(inputForm);
       if (res.success) {
         setRecommendations(res.data);
       }
-    } catch (err) {
-      // Still cold after the wait → the modal owns it ("Try again"); other
-      // failures keep the original toast.
-      if (!isStillDown(err)) {
-        showToast('error', tr('Failed to run recommendation engine'));
-      }
+    } catch {
+      showToast('error', tr('Failed to run recommendation engine'));
     } finally {
       setLoading(false);
     }
@@ -174,10 +163,6 @@ export const CropRecommendation: React.FC<CropRecommendationProps> = ({ onNaviga
 
   return (
     <div className="space-y-6">
-      {/* Cold AI service: sprout overlay with agronomist copy; retry reruns
-          the same recommendation request. */}
-      <WakingUpModal onRetry={() => void loadRecommendations()} />
-
       {/* Intro */}
       <div className="bg-white dark:bg-[#0a0a0a] p-5 rounded-2xl border border-slate-200 dark:border-[#222222]/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

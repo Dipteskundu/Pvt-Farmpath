@@ -200,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     try {
-      firebaseSignOut(auth).catch(() => {});
+      if (auth) firebaseSignOut(auth).catch(() => {});
     } catch {}
     setUser(null);
     setSelectedPortal(null);
@@ -234,11 +234,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const loginWithGoogle = useCallback(async () => {
+    if (!auth) {
+      throw new Error(
+        'Google sign-in is not configured. Set the NEXT_PUBLIC_FIREBASE_* variables.'
+      );
+    }
     const result = await signInWithPopup(auth, googleProvider);
     await syncAndRedirect(result.user);
   }, [syncAndRedirect]);
 
   const loginWithGitHub = useCallback(async () => {
+    if (!auth) {
+      throw new Error(
+        'GitHub sign-in is not configured. Set the NEXT_PUBLIC_FIREBASE_* variables.'
+      );
+    }
     const result = await signInWithPopup(auth, githubProvider);
     await syncAndRedirect(result.user);
   }, [syncAndRedirect]);

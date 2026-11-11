@@ -12,8 +12,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Reveal, staggerContainer, staggerItem, EASE } from "@/components/motion";
 import { tr } from "@/lib/localize";
-import { withWarmupRetry, isStillDown } from "@/lib/warmup";
-import { WakingUpModal } from "@/components/ui/WakingUpModal";
 import { getPublicInputs, type SupplierProduct } from "@/lib/supplierApi";
 import { StarRating } from "../ratings/StarRating";
 
@@ -77,25 +75,10 @@ export function InputsBrowser({ basePath = "/inputs" }: { basePath?: string }) {
   const fetchInputs = useCallback(async () => {
     setLoading(true);
     setError("");
-    try {
-      // Cold-start aware: the sprout modal covers a waking instance and this
-      // same call retries once the server answers healthy.
-      const res = await withWarmupRetry(
-        () => getPublicInputs(),
-        "server",
-        (r) => (r.success ? undefined : r.message)
-      );
-      if (res.success) setProducts(res.data);
-      else setError(res.message || t("ইনপুট লোড করা যায়নি।", "Could not load inputs."));
-    } catch (err) {
-      // Still cold after the wait → the modal shows its "Try again" state;
-      // anything else keeps the usual error card.
-      if (!isStillDown(err)) {
-        setError(t("ইনপুট লোড করা যায়নি।", "Could not load inputs."));
-      }
-    } finally {
-      setLoading(false);
-    }
+    const res = await getPublicInputs();
+    if (res.success) setProducts(res.data);
+    else setError(res.message || t("ইনপুট লোড করা যায়নি।", "Could not load inputs."));
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -145,10 +128,6 @@ export function InputsBrowser({ basePath = "/inputs" }: { basePath?: string }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Free-tier cold start: friendly overlay while the server wakes; the
-          retry button re-runs fetchInputs. */}
-      <WakingUpModal onRetry={fetchInputs} />
-
       {/* Header */}
       <Reveal y={14}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
