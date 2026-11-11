@@ -347,6 +347,13 @@ export const FARMER_ROUTE_MAP: Record<string, string> = {
   farms: '/dashboard/farms',
   fields: '/dashboard/fields',
   recommendation: '/dashboard/crops/recommend',
+  /**
+   * The recommended-crop detail page. Carries a `:crop` segment (the
+   * recommendation-card id, which is either a master-crop `_id` or the
+   * AI canonical name) — `RouteGuard` compiles it into a pattern instead
+   * of comparing literally, exactly like `order_detail` below.
+   */
+  crop_detail: '/dashboard/crops/recommend/:crop',
   comparison: '/dashboard/comparison',
   crops: '/dashboard/crops',
   logs: '/dashboard/logs',
@@ -659,7 +666,13 @@ export function getActiveKey(
   );
   if (exact) return exact[0];
 
-  const patterned = entries.find(([, route]) => matchesPattern(route, pathname));
+  const patterned = entries.find(
+    ([key, route]) =>
+      // `*_detail` keys (order detail, recommended-crop detail) exist only
+      // so `RouteGuard` lets the URL through — the parent module highlights
+      // instead, via the sub-page fallback below.
+      !key.endsWith('_detail') && matchesPattern(route, pathname)
+  );
   if (patterned) return patterned[0];
 
   // Sub-pages that live under a mapped route (`/dashboard/profile/edit`

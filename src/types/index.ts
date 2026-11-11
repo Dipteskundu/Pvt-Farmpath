@@ -176,17 +176,105 @@ export interface CropRecommendationItem {
   scientificName: string;
   suitabilityScore: number; // 0 - 100
   recommendedVariety: string;
-  maturityPeriodDays: number;
-  estimatedYieldKgPerAcre: number;
-  estimatedCostPerAcre: number;
-  expectedMarketPricePerKg: number;
-  estimatedRevenuePerAcre: number;
-  estimatedProfitPerAcre: number;
-  roiPercentage: number;
-  riskFactor: 'Low' | 'Medium' | 'High';
-  waterRequirementMm: number;
+  maturityPeriodDays: number | null;
+  estimatedYieldKgPerAcre: number | null;
+  estimatedCostPerAcre: number | null;
+  expectedMarketPricePerKg: number | null;
+  estimatedRevenuePerAcre: number | null;
+  estimatedProfitPerAcre: number | null;
+  roiPercentage: number | null;
+  riskFactor: 'Low' | 'Medium' | 'High' | 'Unknown';
+  waterRequirementMm: number | null;
   keyAdvantages: string[];
   climateResilience: string;
+}
+
+/**
+ * Full agronomic profile for one recommended crop, merged from the
+ * master Crop catalog and the AI service by `GET /farmer/crops/:id/detail`.
+ * Every section is nullable — the detail page renders honest "not
+ * available" states rather than invented values.
+ */
+export interface CropDetailIdentity {
+  cropName: string;
+  banglaName: string | null;
+  scientificName: string;
+  category: string | null;
+  canonicalName: string | null;
+  spasLabel: string | null;
+  verifiedSeasons: string[];
+  inMasterCatalog: boolean;
+}
+
+export interface CropDetailBenchmarks {
+  recommendedSeason: string | null;
+  maturityPeriodDays: number | null;
+  estimatedYieldKgPerAcre: number | null;
+  expectedMarketPricePerKg: number | null;
+  optimalSoilPhRange: string | null;
+  minRainfallMm: number | null;
+  maxRainfallMm: number | null;
+  waterRequirementMm: number | null;
+  recommendedVarieties: string[];
+  pestVulnerabilities: string[];
+}
+
+export interface CropLifecycle {
+  transplant_window: string;
+  growth_window: string;
+  harvest_window: string;
+}
+
+export interface CropClimateEnvelope {
+  optimal_avg_temp_c: number;
+  optimal_avg_humidity_pct: number;
+  max_temp_c: number;
+  min_temp_c: number;
+  max_rh_pct: number;
+  min_rh_pct: number;
+}
+
+export interface BarcSuitability {
+  crop?: string;
+  district?: string;
+  is_barc_tracked?: boolean;
+  suitability_class?: string;
+  suitability_level?: string;
+  details?: string;
+  [key: string]: unknown;
+}
+
+export interface FertilizerPlanProduct {
+  product_name: string;
+  quantity_kg: number;
+  nutrient_supplied: string;
+  bags_50kg?: number;
+}
+
+export interface FertilizerPlanStage {
+  timing_stage: string;
+  products_to_apply: string[];
+}
+
+export interface FertilizerPlan {
+  crop: string;
+  has_frg_guidance: boolean;
+  message?: string;
+  fertilizer_products?: FertilizerPlanProduct[];
+  application_schedule?: FertilizerPlanStage[];
+  safety_advisory?: string[];
+  source?: string;
+}
+
+export interface CropDetail {
+  query: { cropId: string; resolvedName: string };
+  identity: CropDetailIdentity;
+  benchmarks: CropDetailBenchmarks;
+  lifecycle: CropLifecycle | null;
+  climateEnvelope: CropClimateEnvelope | null;
+  barcSuitability: BarcSuitability | null;
+  fertilizerPlan: FertilizerPlan | null;
+  sources: { masterCatalog: boolean; aiService: boolean };
 }
 
 export interface CropComparisonProfile {

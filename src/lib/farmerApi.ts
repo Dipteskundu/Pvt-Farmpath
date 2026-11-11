@@ -16,6 +16,7 @@ import {
   CropRecommendationInput,
   CropRecommendationItem,
   CropComparisonProfile,
+  CropDetail,
   HarvestRecord,
   FarmExpense,
   ProfitabilityMetrics,
@@ -105,6 +106,11 @@ export async function getCropRecommendations(
   input?: CropRecommendationInput
 ): Promise<ApiResponse<CropRecommendationItem[]>> {
   return ok(await api.post<CropRecommendationItem[]>('/farmer/crops/recommend', input ?? {}));
+}
+
+// 5b. Single recommended-crop detail profile
+export async function getCropDetail(cropId: string): Promise<ApiResponse<CropDetail>> {
+  return ok(await api.get<CropDetail>(`/farmer/crops/${encodeURIComponent(cropId)}/detail`));
 }
 
 // 6. Crop Comparison
