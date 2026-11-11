@@ -492,6 +492,19 @@ export async function uploadListingImage(
   }
 }
 
+/**
+ * Upload a supplier product/inputs photo.
+ *
+ * Same storage path as listing photos (ImgBB via `POST /marketplace/upload`,
+ * field name `"image"`); a separate wrapper keeps the two call sites
+ * semantically clear.
+ */
+export async function uploadProductImage(
+  file: File
+): Promise<ApiResponse<string>> {
+  return uploadListingImage(file);
+}
+
 export async function createListing(
   payload: ListingPayload
 ): Promise<ApiResponse<ProduceListing | null>> {

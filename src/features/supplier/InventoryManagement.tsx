@@ -18,6 +18,7 @@ import {
   updateProduct,
   type ProductPayload,
 } from "@/lib/supplierApi";
+import { uploadProductImage } from "@/lib/marketplaceApi";
 
 const CATEGORIES: SupplierProduct["category"][] = [
   "Seeds",
@@ -425,8 +426,31 @@ function FormModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
   const set = (patch: Partial<ProductPayload>) =>
     setPayload({ ...payload, ...patch });
+
+  /**
+   * Upload immediately on pick rather than on save — the URL has to exist
+   * before the product does, and failing here means the supplier retries a
+   * 5 MB transfer instead of a whole form submit. Stored on ImgBB, like
+   * every other photo in the application.
+   */
+  const pickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    setUploading(true);
+    const res = await uploadProductImage(file);
+    if (res.success && res.data) set({ imageUrl: res.data });
+    else setUploadError(res.message ? trPhrase(res.message) : t("আপলোড ব্যর্থ হয়েছে", "Upload failed."));
+    setUploading(false);
+    // Clear so choosing the same file again re-fires `onChange`.
+    input.value = "";
+  };
 
   const field =
     "w-full text-sm px-3 py-2 border border-slate-200 dark:border-[#333] rounded-lg bg-white dark:bg-[#111] focus:outline-none focus:border-emerald-400";
@@ -522,14 +546,47 @@ function FormModal({
             />
           </label>
 
-          <label className={label}>
-            {t("ছবির লিংক (ঐচ্ছিক)", "Image URL (optional)")}
+          <label className={`col-span-2 ${label}`}>
+            {t("পণ্যের ছবি (ঐচ্ছিক)", "Product photo (optional)")}
             <input
-              value={payload.imageUrl}
-              onChange={(e) => set({ imageUrl: e.target.value })}
-              placeholder="https://..."
-              className={`mt-1 ${field}`}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={pickImage}
+              disabled={uploading}
+              className="mt-1 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-emerald-700 hover:file:bg-emerald-100 disabled:opacity-60 dark:file:bg-emerald-500/15 dark:file:text-emerald-300 dark:hover:file:bg-emerald-500/25"
             />
+            {uploading ? (
+              <p className="mt-1 text-[11px] text-slate-500">
+                {t("আপলোড হচ্ছে...", "Uploading…")}
+              </p>
+            ) : uploadError ? (
+              <p className="mt-1 text-[11px] text-rose-600">{uploadError}</p>
+            ) : payload.imageUrl ? (
+              <div className="mt-2 flex items-center gap-3 rounded-xl border border-slate-200 dark:border-[#333] p-2">
+                <img
+                  src={payload.imageUrl}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                />
+                <p className="min-w-0 flex-1 truncate text-[11px] text-slate-500">
+                  {payload.imageUrl}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => set({ imageUrl: "" })}
+                  className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                >
+                  {t("সরান", "Remove")}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-1 text-[11px] text-slate-400">
+                {t(
+                  "JPEG, PNG, GIF বা WebP · সর্বোচ্চ ৫ MB",
+                  "JPEG, PNG, GIF or WebP · max 5 MB"
+                )}
+              </p>
+            )}
           </label>
 
           <label className={`col-span-2 ${label}`}>
