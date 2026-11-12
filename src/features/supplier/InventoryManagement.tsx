@@ -88,7 +88,10 @@ export function InventoryManagement() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
 
-  const t = (bn: string, en: string) => (language === "bn" ? bn : en);
+  const t = useCallback(
+    (bn: string, en: string) => (language === "bn" ? bn : en),
+    [language]
+  );
   const num = (v: string | number) => (language === "bn" ? bnNum(v) : String(v));
 
   const load = useCallback(async () => {
@@ -103,7 +106,7 @@ export function InventoryManagement() {
           : t("ইনপুট আনা যায়নি", "Could not load your inputs.")
       );
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => void load());

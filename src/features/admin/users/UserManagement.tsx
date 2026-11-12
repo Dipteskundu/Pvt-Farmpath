@@ -1,19 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { tr } from "@/lib/localize";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  Users,
   Search,
-  Filter,
-  ShieldCheck,
-  UserCheck,
-  UserX,
   Mail,
   Phone,
   Plus,
-  BadgeCheck,
 } from '@/components/icons';
-import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -28,7 +21,10 @@ import { AdminUser } from '@/types';
 export const UserManagement: React.FC = () => {
   const { language } = useLanguage();
   const { showToast } = useToast();
-  const t = (bn: string, en: string) => (language === 'bn' ? bn : en);
+  const t = useCallback(
+    (bn: string, en: string) => (language === 'bn' ? bn : en),
+    [language]
+  );
 
   const roleLabel = (r: AdminUser['role']) => {
     switch (r) {
@@ -87,7 +83,7 @@ export const UserManagement: React.FC = () => {
       }
     }
     load();
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleToggleStatus = async (user: AdminUser) => {
     const nextStatus: AdminUser['status'] =

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Phone, Shield, Calendar, MapPin, Award, Building2 } from "lucide-react";
+import { User, Shield, Calendar, MapPin, Award, Building2 } from "lucide-react";
 import { PortalGate } from "@/features/layout/PortalGate";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -26,8 +26,8 @@ export default function ProfilePage() {
       try {
         const data = await getUserProfile();
         setProfileData(data);
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
+      } catch {
+        // Loading state clears below; the empty profile renders its own state.
       } finally {
         setLoading(false);
       }

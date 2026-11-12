@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Phone, Shield, Building2, Award, MapPin } from "lucide-react";
+import { User, Building2, MapPin } from "lucide-react";
 import { PortalGate } from "@/features/layout/PortalGate";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
 import { ProfileHero } from "@/components/profile/ProfileHero";
-import { ProfileCard, ProfileField } from "@/components/profile/ProfileCard";
+import { ProfileCard } from "@/components/profile/ProfileCard";
 import { ProfilePhotoUpload } from "@/components/profile/ProfilePhotoUpload";
 import { getUserProfile, updateUserProfile, ProfileResponse, type ProfileUpdateData } from "@/services/user.service";
 import { uploadFile } from "@/lib/api";
@@ -66,8 +66,8 @@ export default function ProfileEditPage() {
           branchName: bank?.branchName || "",
           routingNumber: bank?.routingNumber || "",
         });
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
+      } catch {
+        // The toast/redirect UX reports the failure; nothing to log.
       } finally {
         setLoading(false);
       }
@@ -106,8 +106,7 @@ export default function ProfileEditPage() {
             "photo"
           );
           photoUrl = result.avatarUrl;
-        } catch (error) {
-          console.error("Photo upload failed:", error);
+        } catch {
           showToast("error", t('profilePhotoUploadError', 'Failed to upload photo'));
         } finally {
           setUploadingPhoto(false);
@@ -141,8 +140,7 @@ export default function ProfileEditPage() {
       const result = await updateUserProfile(updateData);
       setProfileData(result);
       showToast("success", t('profileSaveSuccess', 'Profile updated successfully'));
-    } catch (error) {
-      console.error("Failed to update profile:", error);
+    } catch {
       showToast("error", t('profileSaveError', 'Failed to update profile'));
     } finally {
       setSaving(false);

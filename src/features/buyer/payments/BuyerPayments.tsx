@@ -93,7 +93,7 @@ export function BuyerPayments() {
       else setError(res.message || (language === "bn" ? "পেমেন্ট লোড করা যায়নি।" : "Could not load payments."));
       setLoading(false);
     });
-  }, [user, router]);
+  }, [user, router, language]);
 
   const completed = payments
     .filter((p) => p.status === "completed")

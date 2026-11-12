@@ -1,23 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { tr, trPhrase } from "@/lib/localize";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  Store,
-  CheckCircle2,
   AlertTriangle,
   Search,
-  Filter,
   Eye,
   Check,
-  X,
-  TrendingUp,
-  Tag,
-  Scale,
   MapPin,
   RefreshCw,
   Microscope,
 } from '@/components/icons';
-import { Card, CardHeader } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -41,7 +34,9 @@ export const MarketplaceManagement: React.FC = () => {
   /** Listing whose inspection request is in flight. */
   const [requestingId, setRequestingId] = useState('');
 
-  const loadListings = async () => {
+  // Memoized so the mount effect below can depend on it without re-running
+  // on every render (showToast has a stable identity).
+  const loadListings = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getMarketplaceListingsAdmin();
@@ -53,12 +48,12 @@ export const MarketplaceManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => void loadListings());
     return () => cancelAnimationFrame(frameId);
-  }, []);
+  }, [loadListings]);
 
   const handleStatusChange = async (id: string, status: MarketplaceListingAdminView['status']) => {
     try {

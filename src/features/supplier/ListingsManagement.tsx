@@ -124,7 +124,10 @@ export function ListingsManagement() {
   /** Listing id whose inspection request is in flight, for the busy state. */
   const [requestingId, setRequestingId] = useState("");
 
-  const t = (bn: string, en: string) => (language === "bn" ? bn : en);
+  const t = useCallback(
+    (bn: string, en: string) => (language === "bn" ? bn : en),
+    [language]
+  );
   const num = (v: string | number) => (language === "bn" ? bnNum(v) : String(v));
 
   const load = useCallback(async () => {
@@ -134,7 +137,7 @@ export function ListingsManagement() {
     if (res.success) setRows(res.data);
     else setError(res.message ? trPhrase(res.message) : t("তালিকা আনা যায়নি", "Could not load your listings."));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => void load());

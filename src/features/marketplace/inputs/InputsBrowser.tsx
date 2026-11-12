@@ -66,7 +66,10 @@ export function InputsBrowser({ basePath = "/inputs" }: { basePath?: string }) {
   const [sortBy, setSortBy] = useState<SortKey>("newest");
   const [showFilters, setShowFilters] = useState(false);
 
-  const t = (bn: string, en: string) => (language === "bn" ? bn : en);
+  const t = useCallback(
+    (bn: string, en: string) => (language === "bn" ? bn : en),
+    [language]
+  );
   const categoryLabel = (cat: string) => {
     const pair = CATEGORY_LABEL[cat];
     return pair ? (language === "bn" ? pair[0] : pair[1]) : cat;
@@ -79,7 +82,7 @@ export function InputsBrowser({ basePath = "/inputs" }: { basePath?: string }) {
     if (res.success) setProducts(res.data);
     else setError(res.message || t("ইনপুট লোড করা যায়নি।", "Could not load inputs."));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => void fetchInputs());

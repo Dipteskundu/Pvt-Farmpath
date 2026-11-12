@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -32,7 +32,6 @@ interface PublicNavbarProps {
 
 export const PublicNavbar: React.FC<PublicNavbarProps> = ({ transparent = false }) => {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
   const { language, setLanguage } = useLanguage();
   const t = useT();

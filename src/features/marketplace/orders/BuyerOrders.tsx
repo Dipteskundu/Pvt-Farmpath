@@ -13,7 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useRouter } from "next/navigation";
 import { getLoginUrl } from "@/lib/api";
 import { getBuyerOrders, type BuyerOrder, type OrderStatus } from "@/lib/marketplaceApi";
-import { tr, trPhrase } from "@/lib/localize";
+import { trPhrase } from "@/lib/localize";
 import { DisputeForm } from "./DisputeForm";
 import {
   ESCROW_CONFIG,

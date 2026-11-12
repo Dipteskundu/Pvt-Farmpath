@@ -37,7 +37,6 @@ import {
   Mail,
   Info,
   AlertTriangle,
-  BarChart3,
 } from '@/components/icons';
 
 export interface NavItem {

@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, {useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Icon, ShieldCheck } from "@/components/icons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { tr, trPhrase } from "@/lib/localize";
+import { trPhrase } from "@/lib/localize";
 import {
   getOrderById,
   type BuyerOrder,
@@ -58,7 +58,15 @@ export function OrderDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [showDispute, setShowDispute] = useState(false);
 
-  const t = (bn: string, en: string) => (language === "bn" ? bn : en);
+  // The polling effect below only needs the status; deriving the primitive
+  // keeps the interval from being torn down/recreated every time a poll
+  // returns a fresh order object.
+  const orderStatus = order?.status;
+
+  const t = useCallback(
+    (bn: string, en: string) => (language === "bn" ? bn : en),
+    [language]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -73,14 +81,14 @@ export function OrderDetail({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => {
-    if (!order || order.status === "delivered" || order.status === "cancelled") return;
+    if (!orderStatus || orderStatus === "delivered" || orderStatus === "cancelled") return;
     const interval = window.setInterval(() => {
       getOrderById(id).then((res) => {
         if (res.success) setOrder(res.data);
       });
     }, 20_000);
     return () => window.clearInterval(interval);
-  }, [id, order?.status]);
+  }, [id, orderStatus]);
 
   const receipt = useConfirmReceipt(setOrder);
 

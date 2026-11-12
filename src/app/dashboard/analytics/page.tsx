@@ -1,5 +1,16 @@
 "use client";
+import { PortalGate } from "@/features/layout/PortalGate";
 import { PlatformAnalytics } from "@/features/admin/analytics";
+
+/**
+ * Admin-only module. The sidebar only shows it to the admin portal, and the
+ * gate keeps a manually-typed URL from firing admin API calls that would
+ * just 403 for every other role.
+ */
 export default function Page() {
-  return <PlatformAnalytics />;
+  return (
+    <PortalGate allow={["admin"]} moduleLabel="PlatformAnalytics">
+      <PlatformAnalytics />
+    </PortalGate>
+  );
 }

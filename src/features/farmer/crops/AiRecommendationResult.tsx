@@ -3,13 +3,7 @@ import { tr, trPhrase } from "@/lib/localize";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  TrendingUp,
   FlaskConical,
-  Sprout,
-  ShieldCheck,
-  ChevronRight,
   ArrowRight,
 } from '@/components/icons';
 import { Card, CardHeader } from '@/components/ui/Card';

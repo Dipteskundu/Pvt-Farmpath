@@ -1,5 +1,16 @@
 "use client";
+import { PortalGate } from "@/features/layout/PortalGate";
 import { UserManagement } from "@/features/admin/users";
+
+/**
+ * Admin-only module. The sidebar only shows it to the admin portal, and the
+ * gate keeps a manually-typed URL from firing admin API calls that would
+ * just 403 for every other role.
+ */
 export default function Page() {
-  return <UserManagement />;
+  return (
+    <PortalGate allow={["admin"]} moduleLabel="User Management">
+      <UserManagement />
+    </PortalGate>
+  );
 }

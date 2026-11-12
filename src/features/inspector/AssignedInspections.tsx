@@ -78,7 +78,10 @@ export function AssignedInspections() {
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const t = (bn: string, en: string) => (language === "bn" ? bn : en);
+  const t = useCallback(
+    (bn: string, en: string) => (language === "bn" ? bn : en),
+    [language]
+  );
   const num = (v: string | number) => (language === "bn" ? bnNum(v) : String(v));
 
   const load = useCallback(async () => {
@@ -88,7 +91,7 @@ export function AssignedInspections() {
     if (res.success) setItems(res.data);
     else setError(res.message ? trPhrase(res.message) : t("তালিকা আনা যায়নি।", "Could not load inspections."));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => void load());

@@ -8,7 +8,6 @@ import { setToken, getToken, removeToken } from '@/lib/api';
 import { auth, googleProvider, githubProvider } from '@/lib/firebase';
 import {
   signInWithPopup,
-  onAuthStateChanged,
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
@@ -107,15 +106,6 @@ function getPortalsForRoles(roles?: string[] | string): PortalType[] {
   return portals.size > 0 ? Array.from(portals) : ['main'];
 }
 
-function makeInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 async function syncSocialUser(firebaseUser: FirebaseUser): Promise<{ token: string; user: AuthUser }> {
   return apiSocialAuth({
     firebaseUid: firebaseUser.uid,
@@ -182,8 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       router.push('/');
       return { needsPortalSelection: available.length > 1 };
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch {
       throw new Error('Invalid credentials. Please try again.');
     }
   }, [router]);
@@ -226,7 +215,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         router.push('/');
       } catch (err) {
-        console.error('Backend sync failed:', err);
         throw err;
       }
     },

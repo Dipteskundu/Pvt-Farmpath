@@ -3,18 +3,11 @@ import { tr, trPhrase } from "@/lib/localize";
 import { bnNum, fmtDateBn } from "@/lib/format";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  FileCheck,
   Search,
-  Filter,
   Eye,
-  Microscope,
-  Award,
   Download,
 } from '@/components/icons';
-import { Card, CardHeader } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';

@@ -9,22 +9,6 @@ import {
   ArrowLeft,
   Bell,
   LogOut,
-  LayoutDashboard,
-  Trees,
-  Sparkles,
-  PackageCheck,
-  Store,
-  ShoppingCart,
-  CreditCard,
-  Search,
-  Truck,
-  CheckCircle,
-  FileBarChart,
-  Scale,
-  Phone,
-  Mail,
-  ClipboardList,
-  Calendar,
 } from "@/components/icons";
 import { FarmerNotification } from "@/types";
 import { getFarmerNotifications, markNotificationAsRead } from "@/lib/farmerApi";

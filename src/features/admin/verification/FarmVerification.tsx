@@ -2,18 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { tr, trPhrase } from "@/lib/localize";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  FileCheck,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  MapPin,
   FileText,
-  Search,
-  Filter,
-  ExternalLink,
-  ShieldCheck,
 } from '@/components/icons';
-import { Card, CardHeader } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';

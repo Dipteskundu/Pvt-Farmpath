@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useCallback } from "react";
 
 /**
  * One bilingual helper for the whole dashboard kit.
@@ -13,5 +14,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
  */
 export function useT() {
   const { language } = useLanguage();
-  return (bn: string, en: string) => (language === "bn" ? bn : en);
+  // Memoized so `t` has a stable identity across renders and only changes
+  // when the language actually does — callers can safely list it in hook
+  // dependency arrays (re-running on language switches is the intent).
+  return useCallback(
+    (bn: string, en: string) => (language === "bn" ? bn : en),
+    [language]
+  );
 }

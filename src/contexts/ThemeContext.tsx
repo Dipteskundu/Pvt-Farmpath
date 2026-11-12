@@ -29,7 +29,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setThemeState(saved);
         document.documentElement.classList.toggle('dark', saved === 'dark');
       } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setThemeState('dark');
         document.documentElement.classList.add('dark');
       }

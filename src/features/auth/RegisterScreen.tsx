@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { User, Mail, Phone, Lock, ArrowRight, Check } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -38,7 +38,6 @@ export const RegisterScreen: React.FC = () => {
   const [password, setPassword] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>(["farmer"]);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [socialLoading, setSocialLoading] = useState(false);
 
   const toggleRole = (role: string) => {

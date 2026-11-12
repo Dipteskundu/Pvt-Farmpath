@@ -16,6 +16,10 @@ import {
   Layers,
   AlertCircle,
   TrendingUp,
+  PackageCheck,
+  Thermometer,
+  Database,
+  ChevronRight,
 } from '@/components/icons';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -25,10 +29,9 @@ import { useToast } from '@/components/ui/Toast';
 import { getCropDetail } from '@/lib/farmerApi';
 import {
   CropDetail as CropDetailData,
-  CropLifecycle,
-  CropClimateEnvelope,
 } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { MetricTile, RangeBar, EmptyHint } from './recommendation-ui';
 
 interface CropDetailProps {
   cropId: string;
@@ -38,38 +41,65 @@ interface CropDetailProps {
 /** Renders a value or an honest em-dash when the source data has none. */
 const Value: React.FC<{ value: React.ReactNode }> = ({ value }) =>
   value === null || value === undefined || value === '' ? (
-    <span className="text-slate-400 dark:text-[#555555]">—</span>
+    <span className="text-slate-300 dark:text-[#3a3a3a] font-bold">—</span>
   ) : (
     <>{value}</>
   );
 
-const LifecycleRow: React.FC<{
+/* ------------------------------------------------------------------ */
+/* Section primitives                                                  */
+/* ------------------------------------------------------------------ */
+
+const SectionShell: React.FC<{
+  id?: string;
   icon: React.ReactNode;
-  label: string;
-  window?: string;
-}> = ({ icon, label, window: windowValue }) => (
-  <div className="flex items-start gap-3 py-2.5 border-b border-slate-100 dark:border-[#1c1c1c] last:border-0">
-    <span className="mt-0.5 text-emerald-700 dark:text-emerald-400">{icon}</span>
-    <div className="flex-1">
-      <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-[#666666] font-semibold">
-        {label}
-      </p>
-      <p className="text-sm font-semibold text-slate-800 dark:text-[#e0e0e0] mt-0.5">
-        <Value value={windowValue ? tr(windowValue) : null} />
-      </p>
+  title: string;
+  subtitle?: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ id, icon, title, subtitle, badge, children }) => (
+  <Card id={id} className="scroll-mt-16">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-[#1a1a1a]">
+      <div>
+        <h3 className="text-[15px] font-semibold text-slate-900 dark:text-[#f0f0f0] tracking-tight flex items-center gap-2.5">
+          <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 inline-flex">
+            {icon}
+          </span>
+          {title}
+        </h3>
+        {subtitle && (
+          <p className="text-xs text-slate-500 dark:text-[#a0a0a0] mt-1 sm:ml-[38px]">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {badge && <div className="flex items-center gap-2">{badge}</div>}
     </div>
+    {children}
+  </Card>
+);
+
+/** Vertical milestone timeline row (calendar + fertilizer schedule). */
+const TimelineStep: React.FC<{
+  index: number;
+  icon?: React.ReactNode;
+  label: string;
+  children?: React.ReactNode;
+}> = ({ index, icon, label, children }) => (
+  <div className="relative">
+    <span className="absolute -left-8 top-0.5 w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white text-[11px] font-bold flex items-center justify-center ring-4 ring-white dark:ring-[#0a0a0a]">
+      {icon ?? index}
+    </span>
+    <p className="text-sm font-semibold text-slate-800 dark:text-[#e0e0e0] leading-6">
+      {label}
+    </p>
+    {children && <div className="mt-1.5">{children}</div>}
   </div>
 );
 
-const ClimateRow: React.FC<{ label: string; value: React.ReactNode }> = ({
-  label,
-  value,
-}) => (
-  <div className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-[#1c1c1c] last:border-0">
-    <span className="text-xs text-slate-500 dark:text-[#a0a0a0]">{label}</span>
-    <span className="text-sm font-semibold text-slate-800 dark:text-[#e0e0e0]">
-      <Value value={value} />
-    </span>
+const Timeline: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="relative pl-8 space-y-5 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-px before:bg-slate-200 dark:before:bg-[#222222]">
+    {children}
   </div>
 );
 
@@ -115,24 +145,37 @@ export const CropDetail: React.FC<CropDetailProps> = ({ cropId, onBack }) => {
 
   const t = (en: string, bn: string): string => (language === 'bn' ? bn : en);
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-10 w-40" />
-        <div className="h-48 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-[#222222] p-6">
-          <Skeleton className="h-8 w-1/3 mb-3" />
-          <Skeleton className="h-4 w-1/4 mb-6" />
-          <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-8 w-44" />
+        <div className="h-44 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-[#222222] p-6">
+          <Skeleton className="h-12 w-12 rounded-xl mb-4" />
+          <Skeleton className="h-7 w-1/3 mb-2" />
+          <Skeleton className="h-4 w-1/4 mb-4" />
+          <Skeleton className="h-8 w-full max-w-md" />
+        </div>
+        <div className="h-10 w-full max-w-md rounded-lg bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#222222]" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-24 rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#222222] p-4">
+              <Skeleton className="h-6 w-6 rounded-lg mb-2" />
+              <Skeleton className="h-3 w-2/3 mb-2" />
+              <Skeleton className="h-5 w-1/2" />
+            </div>
+          ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-56 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-[#222222] p-5">
-            <Skeleton className="h-5 w-1/3 mb-4" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-          <div className="h-56 bg-white dark:bg-[#0a0a0a] rounded-2xl border border-slate-200 dark:border-[#222222] p-5">
-            <Skeleton className="h-5 w-1/3 mb-4" />
-            <Skeleton className="h-32 w-full" />
-          </div>
+          {[0, 1].map((i) => (
+            <div key={i} className="h-64 rounded-xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#222222] p-5">
+              <Skeleton className="h-5 w-1/3 mb-4" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -168,355 +211,410 @@ export const CropDetail: React.FC<CropDetailProps> = ({ cropId, onBack }) => {
   const barcLevel = barcSuitability?.suitability_level as string | undefined;
   const barcOk = barcClass && barcLevel && barcLevel !== 'Unclassified' && barcLevel !== 'Unknown';
 
+  /* Sticky section nav — only link to sections that will actually render */
+  const navSections: Array<{ id: string; label: string }> = [
+    { id: 'overview', label: t('Benchmarks', 'বেঞ্চমার্ক') },
+    ...(lifecycle ? [{ id: 'calendar', label: t('Calendar', 'ক্যালেন্ডার') }] : []),
+    ...(climateEnvelope ? [{ id: 'climate', label: t('Climate', 'জলবায়ু') }] : []),
+    ...(barcSuitability ? [{ id: 'zoning', label: t('Zoning', 'জোনিং') }] : []),
+    ...(fertilizerPlan ? [{ id: 'fertilizer', label: t('Fertilizer', 'সার') }] : []),
+    ...(benchmarks.recommendedVarieties.length > 0 || benchmarks.pestVulnerabilities.length > 0
+      ? [{ id: 'catalog', label: t('Catalog', 'ক্যাটালগ') }]
+      : []),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Back navigation */}
       <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={ArrowLeft}
-          onClick={onBack}
-        >
+        <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack}>
           {t('Back to Recommendations', 'পরামর্শে ফিরে যান')}
         </Button>
       </div>
 
-      {/* Hero */}
-      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white p-6 rounded-2xl shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-700/80 border border-emerald-500/40 text-emerald-200 text-xs font-semibold">
-              <Sprout className="w-3.5 h-3.5 text-emerald-300" />
-              {t('Recommended Crop Profile', 'প্রস্তাবিত ফসলের প্রোফাইল')}
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-800 via-teal-800 to-emerald-900 text-white p-6 shadow-lg">
+        {/* Decorative glows */}
+        <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 -left-10 w-64 h-64 rounded-full bg-teal-300/10 blur-3xl" />
+        {/* Fine grid texture */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+
+        <div className="relative flex flex-col md:flex-row md:items-start justify-between gap-5">
+          <div className="flex items-start gap-4 min-w-0">
+            {/* Crop medallion */}
+            <div className="hidden sm:flex w-14 h-14 shrink-0 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm items-center justify-center shadow-inner">
+              <Sprout className="w-7 h-7 text-emerald-200" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight">{displayName}</h2>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-emerald-100/90">
-              {identity.banglaName && identity.banglaName !== identity.cropName && (
-                <span className="font-medium">{identity.banglaName}</span>
-              )}
-              {identity.scientificName && (
-                <span className="italic">{identity.scientificName}</span>
-              )}
-              {identity.canonicalName && identity.canonicalName !== identity.cropName && (
-                <span>
-                  {t('Catalog name', 'ক্যাটালগ নাম')}: {identity.canonicalName}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {identity.category && (
-                <Badge variant="success" className="!bg-emerald-700/60 !text-emerald-100 !border-emerald-400/40">
-                  <Layers className="w-3 h-3" />
-                  {tr(identity.category)}
-                </Badge>
-              )}
-              {identity.verifiedSeasons.map((season) => (
-                <Badge
-                  key={season}
-                  variant="info"
-                  className="!bg-emerald-700/60 !text-emerald-100 !border-emerald-400/40"
-                >
-                  <Calendar className="w-3 h-3" />
-                  {tr(season)}
-                </Badge>
-              ))}
+
+            <div className="min-w-0 space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-emerald-100 text-[11px] font-semibold uppercase tracking-wider">
+                <Sprout className="w-3.5 h-3.5" />
+                {t('Recommended Crop Profile', 'প্রস্তাবিত ফসলের প্রোফাইল')}
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+                {displayName}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-emerald-100/80">
+                {identity.banglaName && identity.banglaName !== identity.cropName && (
+                  <span className="font-medium">{identity.banglaName}</span>
+                )}
+                {identity.scientificName && (
+                  <span className="italic">{identity.scientificName}</span>
+                )}
+                {identity.canonicalName && identity.canonicalName !== identity.cropName && (
+                  <span>
+                    {t('Catalog name', 'ক্যাটালগ নাম')}: {identity.canonicalName}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1.5">
+                {identity.category && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-emerald-50 text-[11px] font-medium">
+                    <Layers className="w-3 h-3" />
+                    {tr(identity.category)}
+                  </span>
+                )}
+                {identity.verifiedSeasons.map((season) => (
+                  <span
+                    key={season}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-emerald-50 text-[11px] font-medium"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    {tr(season)}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-start md:items-end gap-2">
-            <Badge
-              variant={identity.inMasterCatalog ? 'success' : 'warning'}
-              className="!bg-emerald-700/60 !text-emerald-100 !border-emerald-400/40"
-            >
-              <CheckCircle2 className="w-3 h-3" />
+          {/* Data source badge */}
+          <div className="shrink-0 md:text-right">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-semibold text-emerald-50">
+              <Database className="w-3 h-3" />
               {identity.inMasterCatalog
                 ? t('National master catalog data', 'জাতীয় মাস্টার ক্যাটালগ তথ্য')
                 : t('AI model catalog data', 'এআই মডেল ক্যাটালগ তথ্য')}
-            </Badge>
-            <p className="text-[11px] text-emerald-200/70 max-w-xs md:text-right">
+            </span>
+            <p className="text-[11px] text-emerald-100/60 max-w-xs md:text-right mt-2 leading-relaxed">
               {t(
-                'Benchmark values come from the national master crop catalog; lifecycle, climate, zoning, and fertilizer sections come from the AI agronomy service.',
-                'বেঞ্চমার্ক মান জাতীয় মাস্টার ক্রপ ক্যাটালগ থেকে; জীবনচক্র, জলবায়ু, জোনিং ও সার বিভাগ এআই কৃষি সেবা থেকে আসে।'
+                'Benchmarks come from the national master crop catalog; lifecycle, climate, zoning, and fertilizer sections come from the AI agronomy service.',
+                'বেঞ্চমার্ক জাতীয় মাস্টার ক্রপ ক্যাটালগ থেকে; জীবনচক্র, জলবায়ু, জোনিং ও সার বিভাগ এআই কৃষি সেবা থেকে আসে।'
               )}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Key benchmarks */}
-      <Card>
-        <CardHeader
-          title={t('Key Benchmarks', 'মূল বেঞ্চমার্ক')}
-          subtitle={t(
-            'Verified agronomic and economic reference values',
-            'যাচাইকৃত কৃষি ও অর্থনৈতিক রেফারেন্স মান'
-          )}
-        />
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[
-            {
-              icon: <Clock className="w-4 h-4" />,
-              label: t('Maturity', 'পরিপক্বতা'),
-              value:
-                benchmarks.maturityPeriodDays != null
-                  ? `${benchmarks.maturityPeriodDays} ${t('days', 'দিন')}`
-                  : null,
-            },
-            {
-              icon: <Sprout className="w-4 h-4" />,
-              label: t('Est. Yield / Acre', 'সম্ভাব্য ফলন / একর'),
-              value:
-                benchmarks.estimatedYieldKgPerAcre != null
-                  ? `${benchmarks.estimatedYieldKgPerAcre.toLocaleString()} ${tr('kg')}`
-                  : null,
-            },
-            {
-              icon: <Coins className="w-4 h-4" />,
-              label: t('Benchmark Market Price', 'বেঞ্চমার্ক বাজারদর'),
-              value:
-                benchmarks.expectedMarketPricePerKg != null
-                  ? `৳${benchmarks.expectedMarketPricePerKg}/${tr('kg')}`
-                  : null,
-            },
-            {
-              icon: <Droplets className="w-4 h-4" />,
-              label: t('Water Requirement', 'পানির প্রয়োজনীয়তা'),
-              value:
-                benchmarks.waterRequirementMm != null
-                  ? `${benchmarks.waterRequirementMm} ${t('mm', 'মিমি')}`
-                  : null,
-            },
-            {
-              icon: <FlaskConical className="w-4 h-4" />,
-              label: t('Optimal Soil pH', 'সর্বোত্তম মাটির পিএইচ'),
-              value: benchmarks.optimalSoilPhRange || null,
-            },
-            {
-              icon: <CloudRain className="w-4 h-4" />,
-              label: t('Rainfall Range', 'বৃষ্টিপাতের পরিসর'),
-              value:
-                benchmarks.minRainfallMm != null && benchmarks.maxRainfallMm != null
-                  ? `${benchmarks.minRainfallMm.toLocaleString()} – ${benchmarks.maxRainfallMm.toLocaleString()} ${t('mm', 'মিমি')}`
-                  : null,
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="p-3.5 bg-slate-50 dark:bg-[#111111]/60 rounded-xl border border-slate-100 dark:border-[#1c1c1c]"
+      {/* ── Sticky section nav ───────────────────────────────────── */}
+      <nav
+        aria-label={t('Page sections', 'পৃষ্ঠার বিভাগ')}
+        className="sticky top-0 z-20 flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200/80 dark:border-[#222222] bg-white/85 dark:bg-black/80 backdrop-blur-md px-2 py-1.5 shadow-xs"
+      >
+        {navSections.map((section, i) => (
+          <React.Fragment key={section.id}>
+            {i > 0 && <span className="w-px h-4 bg-slate-200 dark:bg-[#222222] shrink-0" aria-hidden="true" />}
+            <button
+              type="button"
+              onClick={() => scrollTo(section.id)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-[#a0a0a0] hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-[#1a1a1a] dark:hover:text-emerald-300 transition-colors whitespace-nowrap cursor-pointer"
             >
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 dark:text-[#666666] font-semibold mb-1.5">
-                <span className="text-emerald-700 dark:text-emerald-400">{stat.icon}</span>
-                {stat.label}
-              </div>
-              <p className="text-base font-bold text-slate-800 dark:text-[#e0e0e0]">
-                <Value value={stat.value} />
-              </p>
-            </div>
-          ))}
+              {section.label}
+              <ChevronRight className="w-3 h-3 opacity-40" />
+            </button>
+          </React.Fragment>
+        ))}
+      </nav>
+
+      {/* ── Key benchmarks ───────────────────────────────────────── */}
+      <SectionShell
+        id="overview"
+        icon={<TrendingUp />}
+        title={t('Key Benchmarks', 'মূল বেঞ্চমার্ক')}
+        subtitle={t('Verified agronomic and economic reference values', 'যাচাইকৃত কৃষি ও অর্থনৈতিক রেফারেন্স মান')}
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <MetricTile
+            icon={Clock}
+            label={t('Maturity', 'পরিপক্বতা')}
+            value={
+              benchmarks.maturityPeriodDays != null
+                ? `${benchmarks.maturityPeriodDays} ${t('days', 'দিন')}`
+                : null
+            }
+          />
+          <MetricTile
+            icon={Sprout}
+            label={t('Est. Yield / Acre', 'সম্ভাব্য ফলন / একর')}
+            value={
+              benchmarks.estimatedYieldKgPerAcre != null
+                ? `${benchmarks.estimatedYieldKgPerAcre.toLocaleString()} ${tr('kg')}`
+                : null
+            }
+          />
+          <MetricTile
+            icon={Coins}
+            label={t('Benchmark Market Price', 'বেঞ্চমার্ক বাজারদর')}
+            tone="amber"
+            value={
+              benchmarks.expectedMarketPricePerKg != null
+                ? `৳${benchmarks.expectedMarketPricePerKg}/${tr('kg')}`
+                : null
+            }
+          />
+          <MetricTile
+            icon={Droplets}
+            label={t('Water Requirement', 'পানির প্রয়োজনীয়তা')}
+            tone="indigo"
+            value={
+              benchmarks.waterRequirementMm != null
+                ? `${benchmarks.waterRequirementMm} ${t('mm', 'মিমি')}`
+                : null
+            }
+          />
+          <MetricTile
+            icon={FlaskConical}
+            label={t('Optimal Soil pH', 'সর্বোত্তম মাটির পিএইচ')}
+            value={benchmarks.optimalSoilPhRange || null}
+          />
+          <MetricTile
+            icon={CloudRain}
+            label={t('Rainfall Range', 'বৃষ্টিপাতের পরিসর')}
+            tone="indigo"
+            value={
+              benchmarks.minRainfallMm != null && benchmarks.maxRainfallMm != null
+                ? `${benchmarks.minRainfallMm.toLocaleString()} – ${benchmarks.maxRainfallMm.toLocaleString()} ${t('mm', 'মিমি')}`
+                : null
+            }
+          />
         </div>
 
         {benchmarks.recommendedSeason && (
           <div className="mt-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100 text-xs text-slate-700 dark:text-[#999999]">
-            <span className="font-semibold text-emerald-800">
+            <span className="font-semibold text-emerald-800 dark:text-emerald-300">
               {t('Recommended Season', 'প্রস্তাবিত মৌসুম')}:{' '}
             </span>
             {tr(benchmarks.recommendedSeason)}
           </div>
         )}
-      </Card>
+      </SectionShell>
 
-      {/* Growing calendar + climate */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader
-            title={t('Growing Calendar', 'চাষাবাদের ক্যালেন্ডার')}
-            subtitle={t(
-              'Phenological lifecycle windows from the SPAS crop dataset',
-              'SPAS ফসল ডেটাসেট থেকে জীবনচক্রের সময়সীমা'
-            )}
-          />
-          {lifecycle ? (
-            <div>
-              <LifecycleRow
-                icon={<Sprout className="w-4 h-4" />}
-                label={t('Transplant / Sowing Window', 'রোপণ / বপনের সময়')}
-                window={lifecycle.transplant_window}
-              />
-              <LifecycleRow
-                icon={<TrendingUp className="w-4 h-4" />}
-                label={t('Growth Window', 'বৃদ্ধির সময়')}
-                window={lifecycle.growth_window}
-              />
-              <LifecycleRow
-                icon={<Calendar className="w-4 h-4" />}
-                label={t('Harvest Window', 'ফসল তোলার সময়')}
-                window={lifecycle.harvest_window}
-              />
-            </div>
-          ) : (
-            <EmptySection
-              text={t(
-                'Lifecycle windows are not available for this crop yet.',
-                'এই ফসলের জীবনচক্রের সময়সীমা এখনো পাওয়া যায়নি।'
-              )}
-            />
-          )}
-        </Card>
-
-        <Card>
-          <CardHeader
-            title={t('Climate Requirements', 'জলবায়ুর প্রয়োজনীয়তা')}
-            subtitle={t(
-              'Observed temperature and humidity envelope',
-              'পর্যবেক্ষিত তাপমাত্রা ও আর্দ্রতার পরিসর'
-            )}
-          />
-          {climateEnvelope ? (
-            <div>
-              <ClimateRow
-                label={t('Optimal Average Temperature', 'সর্বোত্তম গড় তাপমাত্রা')}
-                value={`${climateEnvelope.optimal_avg_temp_c}°C`}
-              />
-              <ClimateRow
-                label={t('Temperature Tolerance', 'তাপমাত্রা সহনসীমা')}
-                value={`${climateEnvelope.min_temp_c}°C – ${climateEnvelope.max_temp_c}°C`}
-              />
-              <ClimateRow
-                label={t('Optimal Average Humidity', 'সর্বোত্তম গড় আর্দ্রতা')}
-                value={`${climateEnvelope.optimal_avg_humidity_pct}%`}
-              />
-              <ClimateRow
-                label={t('Humidity Tolerance', 'আর্দ্রতা সহনসীমা')}
-                value={`${climateEnvelope.min_rh_pct}% – ${climateEnvelope.max_rh_pct}%`}
-              />
-            </div>
-          ) : (
-            <EmptySection
-              text={t(
-                'Climate envelope data is not available for this crop yet.',
-                'এই ফসলের জলবায়ু তথ্য এখনো পাওয়া যায়নি।'
-              )}
-            />
-          )}
-        </Card>
-      </div>
-
-      {/* BARC suitability */}
-      {barcSuitability && (
-        <Card>
-          <CardHeader
-            title={t('BARC Crop Zoning Suitability', 'বার্ক ক্রপ জোনিং উপযুক্ততা')}
-            subtitle={barcSuitability.district
-              ? `${t('Official assessment for', 'সরকারি মূল্যায়ন —')} ${barcSuitability.district}`
-              : t('Official BARC National Crop Zoning assessment', 'সরকারি বার্ক জাতীয় ক্রপ জোনিং মূল্যায়ন')}
-          />
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <Badge variant={barcOk ? 'success' : 'neutral'} size="md">
-              <MapPin className="w-3.5 h-3.5" />
-              {tr(barcClass || '')}
-            </Badge>
-            {barcSuitability.details && (
-              <p className="text-xs text-slate-500 dark:text-[#a0a0a0] flex-1">
-                {tr(String(barcSuitability.details))}
+      {/* ── Growing calendar ─────────────────────────────────────── */}
+      {lifecycle && (
+        <SectionShell
+          id="calendar"
+          icon={<Calendar />}
+          title={t('Growing Calendar', 'চাষাবাদের ক্যালেন্ডার')}
+          subtitle={t('Phenological lifecycle windows from the SPAS crop dataset', 'SPAS ফসল ডেটাসেট থেকে জীবনচক্রের সময়সীমা')}
+        >
+          <Timeline>
+            <TimelineStep
+              index={1}
+              icon={<Sprout className="w-3 h-3" />}
+              label={t('Transplant / Sowing Window', 'রোপণ / বপনের সময়')}
+            >
+              <p className="text-base font-bold text-emerald-800 dark:text-emerald-300">
+                <Value value={lifecycle.transplant_window ? tr(lifecycle.transplant_window) : null} />
               </p>
-            )}
-          </div>
-        </Card>
+            </TimelineStep>
+            <TimelineStep
+              index={2}
+              icon={<TrendingUp className="w-3 h-3" />}
+              label={t('Growth Window', 'বৃদ্ধির সময়')}
+            >
+              <p className="text-base font-bold text-slate-800 dark:text-[#e0e0e0]">
+                <Value value={lifecycle.growth_window ? tr(lifecycle.growth_window) : null} />
+              </p>
+            </TimelineStep>
+            <TimelineStep
+              index={3}
+              icon={<PackageCheck className="w-3 h-3" />}
+              label={t('Harvest Window', 'ফসল তোলার সময়')}
+            >
+              <p className="text-base font-bold text-slate-800 dark:text-[#e0e0e0]">
+                <Value value={lifecycle.harvest_window ? tr(lifecycle.harvest_window) : null} />
+              </p>
+            </TimelineStep>
+          </Timeline>
+        </SectionShell>
       )}
 
-      {/* FRG-2024 fertilizer plan */}
+      {/* ── Climate requirements ─────────────────────────────────── */}
+      {climateEnvelope && (
+        <SectionShell
+          id="climate"
+          icon={<Thermometer />}
+          title={t('Climate Requirements', 'জলবায়ুর প্রয়োজনীয়তা')}
+          subtitle={t('Observed temperature and humidity envelope', 'পর্যবেক্ষিত তাপমাত্রা ও আর্দ্রতার পরিসর')}
+        >
+          <div className="space-y-6">
+            <RangeBar
+              label={t('Temperature — tolerance band with optimal average', 'তাপমাত্রা — সহনসীমা ও সর্বোত্তম গড়')}
+              min={climateEnvelope.min_temp_c}
+              max={climateEnvelope.max_temp_c}
+              optimal={climateEnvelope.optimal_avg_temp_c}
+              scaleMin={0}
+              scaleMax={50}
+              unit="°C"
+              format={(n) => `${Math.round(n * 10) / 10}`}
+            />
+            <RangeBar
+              label={t('Relative humidity — tolerance band with optimal average', 'আপেক্ষিক আর্দ্রতা — সহনসীমা ও সর্বোত্তম গড়')}
+              min={climateEnvelope.min_rh_pct}
+              max={climateEnvelope.max_rh_pct}
+              optimal={climateEnvelope.optimal_avg_humidity_pct}
+              scaleMin={0}
+              scaleMax={100}
+              unit="%"
+            />
+          </div>
+        </SectionShell>
+      )}
+
+      {/* ── BARC zoning ──────────────────────────────────────────── */}
+      {barcSuitability && (
+        <SectionShell
+          id="zoning"
+          icon={<MapPin />}
+          title={t('BARC Crop Zoning Suitability', 'বার্ক ক্রপ জোনিং উপযুক্ততা')}
+          subtitle={
+            barcSuitability.district
+              ? `${t('Official assessment for', 'সরকারি মূল্যায়ন —')} ${barcSuitability.district}`
+              : t('Official BARC National Crop Zoning assessment', 'সরকারি বার্ক জাতীয় ক্রপ জোনিং মূল্যায়ন')
+          }
+        >
+          {barcOk ? (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/70 dark:bg-emerald-500/10 dark:border-emerald-500/25">
+              <div className="w-11 h-11 shrink-0 rounded-xl bg-emerald-600 dark:bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-emerald-900 dark:text-emerald-200">
+                  {tr(barcClass || '')}
+                </p>
+                {barcSuitability.details && (
+                  <p className="text-xs text-emerald-800/80 dark:text-emerald-200/70 mt-0.5 leading-relaxed">
+                    {tr(String(barcSuitability.details))}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <EmptyHint
+              text={
+                barcSuitability.details
+                  ? tr(String(barcSuitability.details))
+                  : t(
+                      'This crop is not tracked in official BARC Crop Zoning records for your district yet.',
+                      'এই ফসল এখনো সরকারি বার্ক ক্রপ জোনিং রেকর্ডে আপনার জেলার জন্য অন্তর্ভুক্ত নয়।'
+                    )
+              }
+            />
+          )}
+        </SectionShell>
+      )}
+
+      {/* ── FRG-2024 fertilizer plan ─────────────────────────────── */}
       {fertilizerPlan && (
-        <Card>
-          <CardHeader
-            title={t('BARC FRG-2024 Fertilizer Plan', 'বার্ক এফআরজি-২০২৪ সার পরিকল্পনা')}
-            subtitle={
-              fertilizerPlan.has_frg_guidance
-                ? t(
-                    'Official nutrient rates scaled to your registered farm area',
-                    'আপনার নিবন্ধিত জমির আকার অনুযায়ী সরকারি পুষ্টি হার'
-                  )
-                : undefined
-            }
-          />
+        <SectionShell
+          id="fertilizer"
+          icon={<FlaskConical />}
+          title={t('BARC FRG-2024 Fertilizer Plan', 'বার্ক এফআরজি-২০২৪ সার পরিকল্পনা')}
+          subtitle={
+            fertilizerPlan.has_frg_guidance
+              ? t('Official nutrient rates scaled to your registered farm area', 'আপনার নিবন্ধিত জমির আকার অনুযায়ী সরকারি পুষ্টি হার')
+              : undefined
+          }
+          badge={
+            fertilizerPlan.has_frg_guidance ? (
+              <Badge variant="success" size="sm">
+                {t('Official FRG rates', 'সরকারি এফআরজি হার')}
+              </Badge>
+            ) : undefined
+          }
+        >
           {fertilizerPlan.has_frg_guidance ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Required products */}
               <div>
-                <p className="text-[11px] font-semibold text-slate-700 dark:text-[#999999] uppercase tracking-wider mb-2">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-[#777777] uppercase tracking-widest mb-2">
                   {t('Required Products', 'প্রয়োজনীয় সার')}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {(fertilizerPlan.fertilizer_products || []).map((product) => (
                     <div
                       key={product.product_name}
-                      className="p-3 bg-slate-50 dark:bg-[#111111]/60 rounded-xl border border-slate-100 dark:border-[#1c1c1c]"
+                      className="group p-3.5 rounded-xl bg-white dark:bg-[#0f0f0f] border border-slate-200/80 dark:border-[#222222] transition-all duration-200 hover:border-emerald-300 dark:hover:border-[#3a3a3a]"
                     >
-                      <p className="text-sm font-bold text-slate-800 dark:text-[#e0e0e0]">
+                      <p className="text-sm font-bold text-slate-800 dark:text-[#e0e0e0] leading-snug">
                         {tr(product.product_name)}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-[#a0a0a0] mt-0.5">
-                        {product.quantity_kg.toLocaleString()} {tr('kg')}
-                        {product.bags_50kg != null
-                          ? ` • ${product.bags_50kg.toLocaleString()} ${t('× 50 kg bags', '× ৫০ কেজি বস্তা')}`
-                          : ''}
+                      <p className="text-sm font-bold text-slate-900 dark:text-[#f0f0f0] tabular-nums mt-1.5">
+                        {product.quantity_kg.toLocaleString()}{' '}
+                        <span className="text-xs font-medium text-slate-400 dark:text-[#666666]">{tr('kg')}</span>
                       </p>
-                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">
+                      {product.bags_50kg != null && (
+                        <p className="text-[11px] text-slate-500 dark:text-[#a0a0a0] mt-0.5 tabular-nums">
+                          {product.bags_50kg.toLocaleString()} {t('× 50 kg bags', '× ৫০ কেজি বস্তা')}
+                        </p>
+                      )}
+                      <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-500/10">
+                        <CheckCircle2 className="w-3 h-3" />
                         {product.nutrient_supplied}
-                      </p>
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Split application timeline */}
               <div>
-                <p className="text-[11px] font-semibold text-slate-700 dark:text-[#999999] uppercase tracking-wider mb-2">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-[#777777] uppercase tracking-widest mb-3">
                   {t('Split Application Schedule', 'ভাগ করা প্রয়োগ সময়সূচি')}
                 </p>
-                <div className="space-y-2">
+                <Timeline>
                   {(fertilizerPlan.application_schedule || []).map((stage, i) => (
-                    <div
-                      key={stage.timing_stage}
-                      className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-[#1c1c1c] bg-white dark:bg-[#0a0a0a]"
-                    >
-                      <span className="w-6 h-6 shrink-0 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-[#e0e0e0]">
-                          {stage.timing_stage}
+                    <TimelineStep key={stage.timing_stage} index={i + 1} label={stage.timing_stage}>
+                      {stage.products_to_apply.length > 0 ? (
+                        <ul className="space-y-1">
+                          {stage.products_to_apply.map((item) => (
+                            <li
+                              key={item}
+                              className="text-xs text-slate-600 dark:text-[#a0a0a0] flex items-start gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-slate-400 dark:text-[#555555]">
+                          {t('No products at this stage', 'এই পর্যায়ে কোনো সার নেই')}
                         </p>
-                        {stage.products_to_apply.length > 0 ? (
-                          <ul className="mt-1 space-y-0.5">
-                            {stage.products_to_apply.map((item) => (
-                              <li
-                                key={item}
-                                className="text-xs text-slate-500 dark:text-[#a0a0a0] flex items-start gap-1.5"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-xs text-slate-400 dark:text-[#555555] mt-0.5">
-                            {t('No products at this stage', 'এই পর্যায়ে কোনো সার নেই')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                      )}
+                    </TimelineStep>
                   ))}
-                </div>
+                </Timeline>
               </div>
 
+              {/* Safety advisory */}
               {(fertilizerPlan.safety_advisory || []).length > 0 && (
-                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/70 dark:bg-amber-500/10 dark:border-amber-500/25">
-                  <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1.5">
+                <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/70 dark:bg-amber-500/10 dark:border-amber-500/25">
+                  <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5" />
                     {t('Safety Advisory', 'নিরাপত্তা পরামর্শ')}
                   </p>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5">
                     {fertilizerPlan.safety_advisory!.map((tip) => (
-                      <li key={tip} className="text-xs text-amber-800/90 dark:text-amber-200/80 flex items-start gap-1.5">
-                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <li key={tip} className="text-xs text-amber-900/90 dark:text-amber-200/80 flex items-start gap-2 leading-relaxed">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
                         {tip}
                       </li>
                     ))}
@@ -533,7 +631,7 @@ export const CropDetail: React.FC<CropDetailProps> = ({ cropId, onBack }) => {
               </p>
             </div>
           ) : (
-            <EmptySection
+            <EmptyHint
               text={
                 fertilizerPlan.message ||
                 t(
@@ -543,30 +641,31 @@ export const CropDetail: React.FC<CropDetailProps> = ({ cropId, onBack }) => {
               }
             />
           )}
-        </Card>
+        </SectionShell>
       )}
 
-      {/* Varieties & pests (master catalog) */}
+      {/* ── Varieties & pests (master catalog) ───────────────────── */}
       {(benchmarks.recommendedVarieties.length > 0 || benchmarks.pestVulnerabilities.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div id="catalog" className="grid grid-cols-1 lg:grid-cols-2 gap-5 scroll-mt-16">
           <Card>
             <CardHeader
               title={t('Approved Varieties', 'অনুমোদিত জাত')}
               subtitle={t('National master catalog cultivars', 'জাতীয় মাস্টার ক্যাটালগের জাত')}
             />
             {benchmarks.recommendedVarieties.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {benchmarks.recommendedVarieties.map((variety) => (
-                  <Badge key={variety} variant="success">
-                    <Sprout className="w-3 h-3" />
-                    {tr(variety)}
-                  </Badge>
+                  <div
+                    key={variety}
+                    className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1c1c1c] text-xs font-medium text-slate-700 dark:text-[#e0e0e0]"
+                  >
+                    <Sprout className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="truncate">{tr(variety)}</span>
+                  </div>
                 ))}
               </div>
             ) : (
-              <EmptySection
-                text={t('No approved varieties recorded.', 'কোনো অনুমোদিত জাত নিবন্ধিত নেই।')}
-              />
+              <EmptyHint text={t('No approved varieties recorded.', 'কোনো অনুমোদিত জাত নিবন্ধিত নেই।')} />
             )}
           </Card>
 
@@ -576,28 +675,29 @@ export const CropDetail: React.FC<CropDetailProps> = ({ cropId, onBack }) => {
               subtitle={t('Known threats from the master catalog', 'মাস্টার ক্যাটালগের পরিচিত ঝুঁকি')}
             />
             {benchmarks.pestVulnerabilities.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {benchmarks.pestVulnerabilities.map((pest) => (
-                  <Badge key={pest} variant="warning">
-                    <ShieldCheck className="w-3 h-3" />
-                    {tr(pest)}
-                  </Badge>
+                  <div
+                    key={pest}
+                    className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50/60 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-xs font-medium text-amber-800 dark:text-amber-300"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{tr(pest)}</span>
+                  </div>
                 ))}
               </div>
             ) : (
-              <EmptySection
-                text={t('No pest vulnerabilities recorded.', 'কোনো পোকামাকড়ের ঝুঁকি নিবন্ধিত নেই।')}
-              />
+              <EmptyHint text={t('No pest vulnerabilities recorded.', 'কোনো পোকামাকড়ের ঝুঁকি নিবন্ধিত নেই।')} />
             )}
           </Card>
         </div>
       )}
 
-      {/* Data provenance footer */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#222222] bg-white dark:bg-[#0a0a0a] flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">
+      {/* ── Data provenance footer ───────────────────────────────── */}
+      <div className="p-4 rounded-2xl border border-slate-200/70 dark:border-[#1a1a1a] bg-slate-50/70 dark:bg-[#0f0f0f] flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">
         <div className="flex items-start gap-2">
           <Info className="w-4 h-4 text-slate-400 dark:text-[#666666] mt-0.5 shrink-0" />
-          <p className="text-[11px] text-slate-500 dark:text-[#a0a0a0]">
+          <p className="text-[11px] text-slate-500 dark:text-[#a0a0a0] leading-relaxed max-w-2xl">
             {t(
               'Sections marked with — have no verified source data yet. FarmPath never invents agronomic values; missing sections will appear as official sources are compiled.',
               'যে বিভাগে — চিহ্ন আছে সেখানে এখনো যাচাইকৃত তথ্য নেই। FarmPath কখনো কৃষিগত মান বানায় না; সরকারি উৎস সংকলিত হলে অনুপস্থিত বিভাগ দেখা যাবে।'
@@ -616,9 +716,3 @@ export const CropDetail: React.FC<CropDetailProps> = ({ cropId, onBack }) => {
     </div>
   );
 };
-
-const EmptySection: React.FC<{ text: string }> = ({ text }) => (
-  <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-[#333333] text-center">
-    <p className="text-xs text-slate-400 dark:text-[#555555]">{text}</p>
-  </div>
-);

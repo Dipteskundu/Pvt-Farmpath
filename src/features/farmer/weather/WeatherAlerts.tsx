@@ -7,8 +7,6 @@ import {
   Wind,
   Sun,
   Thermometer,
-  ShieldAlert,
-  Calendar,
   Info,
 } from '@/components/icons';
 import { Card, CardHeader } from '@/components/ui/Card';

@@ -3,19 +3,12 @@ import { tr, trPhrase } from "@/lib/localize";
 import { bnNum, fmtDateTimeBn } from "@/lib/format";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  CreditCard,
   Search,
-  Filter,
-  CheckCircle2,
-  Clock,
   AlertCircle,
   Check,
-  DollarSign,
   ArrowUpRight,
-  ShieldCheck,
   Download,
 } from '@/components/icons';
-import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Pager } from '@/components/ui/Pager';

@@ -10,12 +10,16 @@ const FOOTER_LINKS = {
   platform: [
     { key: "home", href: "/" },
     { key: "aboutUs", href: "/about" },
-    { key: "cropSuggestion", href: "/farmer/crops/recommend" },
+    // Dashboard route; signed-out visitors are redirected to /login by the
+    // dashboard layout guard.
+    { key: "cropSuggestion", href: "/dashboard/crops/recommend" },
     { key: "login", href: "/login" },
   ],
   resources: [
-    { key: "farmerPortal", href: "/farmer" },
-    { key: "adminPortal", href: "/admin" },
+    // Portals are reached through login; there are no standalone /farmer or
+    // /admin pages.
+    { key: "farmerPortal", href: "/login" },
+    { key: "adminPortal", href: "/login" },
     { key: "documentation", href: "#" },
     { key: "apiReference", href: "#" },
   ],

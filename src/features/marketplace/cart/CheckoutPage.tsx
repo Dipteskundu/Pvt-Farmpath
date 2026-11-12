@@ -7,7 +7,6 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { useT } from "@/components/dashboard/useT";
 import { tr } from "@/lib/localize";
 import {
@@ -35,7 +34,6 @@ const PAYMENT_METHODS = [
 export function CheckoutPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { user } = useAuth();
   const t = useT();
 
   const pmLabel = (id: string) =>

@@ -3,17 +3,11 @@ import { tr } from "@/lib/localize";
 import {
   Bell,
   CheckCheck,
-  Filter,
   Calendar,
   CloudRain,
   DollarSign,
-  ShieldCheck,
-  AlertCircle,
-  Clock,
   Sparkles,
-  ExternalLink,
 } from '@/components/icons';
-import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Pager } from '@/components/ui/Pager';
