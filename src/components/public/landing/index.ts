@@ -1,0 +1,13 @@
+﻿export { HeroSection } from "./HeroSection";
+export { FeatureDestinationsSection } from "./FeatureDestinationsSection";
+export { AiCropRecommendationSection } from "./AiCropRecommendationSection";
+export { MarketplaceDemandSection } from "./MarketplaceDemandSection";
+export { QualityVerificationSection } from "./QualityVerificationSection";
+export { LogisticsPaymentsProfitSection } from "./LogisticsPaymentsProfitSection";
+export { FeaturePillarsStrip } from "./FeaturePillarsStrip";
+export { HowItWorksSection } from "./HowItWorksSection";
+export { ImpactBenefitsSection } from "./ImpactBenefitsSection";
+export { DashboardShowcaseSection } from "./DashboardShowcaseSection";
+export { CommunityTestimonialsSection } from "./CommunityTestimonialsSection";
+export { FaqSection } from "./FaqSection";
+export { BottomCtaBanner } from "./BottomCtaBanner";

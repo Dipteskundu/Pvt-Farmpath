@@ -277,6 +277,38 @@ body {
 .delay-700 { animation-delay: 0.7s; }
 .delay-800 { animation-delay: 0.8s; }
 
+/* Landing page floating badges */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-slow {
+  animation: landing-float 5s ease-in-out infinite;
+}
+.animate-float-delayed {
+  animation: landing-float 6s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+@keyframes landing-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: landing-fade-in 0.35s ease-out;
+}
+
+/* Reviews marquee (right-to-left) */
+@keyframes marquee-rtl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee-rtl {
+  animation: marquee-rtl 36s linear infinite;
+}
+.marquee-paused:hover .animate-marquee-rtl {
+  animation-play-state: paused;
+}
+
 /* Override browser autofill background to maintain glassmorphism */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
